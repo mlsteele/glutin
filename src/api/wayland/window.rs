@@ -299,12 +299,13 @@ impl Window {
 
     #[inline]
     pub fn set_cursor_state(&self, state: CursorState) -> Result<(), String> {
-        use CursorState::{Grab, Normal, Hide};
+        use CursorState::*;
         // TODO : not yet possible on wayland to grab cursor
         match state {
-            Grab => Err("Cursor cannot be grabbed on wayland yet.".to_string()),
+            Normal => Ok(()),
             Hide => Err("Cursor cannot be hidden on wayland yet.".to_string()),
-            Normal => Ok(())
+            Grab => Err("Cursor cannot be grabbed on wayland yet.".to_string()),
+            SuperGrab => Err("Cursor cannot be supergrabbed on wayland yet.".to_string()),
         }
     }
 

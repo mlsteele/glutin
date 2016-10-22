@@ -400,6 +400,10 @@ pub enum CursorState {
     ///
     /// This is useful for first-person cameras for example.
     Grab,
+
+    /// Grab the mouse cursor and keyboard and don't let up on anye events.
+    /// This is somewhat dangerous but good for writing a lock screen or kiosk.
+    SuperGrab,
 }
 
 /// Describes a possible format. Unused.

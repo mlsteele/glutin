@@ -953,27 +953,32 @@ impl Window {
     }
 
     pub fn set_cursor_state(&self, state: CursorState) -> Result<(), String> {
-        use CursorState::{ Grab, Normal, Hide };
+        use CursorState::*;
 
         let mut cursor_state = self.cursor_state.lock().unwrap();
         match (state, *cursor_state) {
-            (Normal, Normal) | (Hide, Hide) | (Grab, Grab) => return Ok(()),
+            (Normal, Normal) | (Hide, Hide) | (Grab, Grab) | (SuperGrab, SuperGrab) => return Ok(()),
             _ => {},
         }
 
         match *cursor_state {
-            Grab => {
-                unsafe {
-                    (self.x.display.xlib.XUngrabPointer)(self.x.display.display, ffi::CurrentTime);
-                    self.x.display.check_errors().expect("Failed to call XUngrabPointer");
-                }
-            },
             Normal => {},
             Hide => {
                 // NB: Calling XDefineCursor with None (aka 0)
                 // as a value resets the cursor to the default.
                 unsafe {
                     (self.x.display.xlib.XDefineCursor)(self.x.display.display, self.x.window, 0);
+                }
+            },
+            Grab => {
+                unsafe {
+                    (self.x.display.xlib.XUngrabPointer)(self.x.display.display, ffi::CurrentTime);
+                    self.x.display.check_errors().expect("Failed to call XUngrabPointer");
+                }
+            },
+            SuperGrab => {
+                unsafe {
+                    panic!("TODO (mlsteele) not yet impelemented un-super-grab");
                 }
             },
         }
@@ -1010,6 +1015,33 @@ impl Window {
                             => Err("cursor could not be grabbed".to_string()),
                         _ => unreachable!(),
                     }
+                }
+            },
+            SuperGrab => {
+                unsafe {
+                    let res1 = match (self.x.display.xlib.XGrabPointer)(
+                        self.x.display.display, self.x.window, ffi::True,
+                        !0 as libc::c_uint,
+                        ffi::GrabModeAsync, ffi::GrabModeAsync,
+                        self.x.window, 0, ffi::CurrentTime
+                    ) {
+                        ffi::GrabSuccess => Ok(()),
+                        ffi::AlreadyGrabbed | ffi::GrabInvalidTime |
+                        ffi::GrabNotViewable | ffi::GrabFrozen
+                            => Err("cursor could not be grabbed".to_string()),
+                        _ => unreachable!(),
+                    };
+                    let res2 = match (self.x.display.xlib.XGrabKeyboard)(
+                        self.x.display.display, self.x.window, ffi::True,
+                        ffi::GrabModeAsync, ffi::GrabModeAsync, ffi::CurrentTime
+                    ) {
+                        ffi::GrabSuccess => Ok(()),
+                        ffi::AlreadyGrabbed | ffi::GrabInvalidTime |
+                        ffi::GrabNotViewable | ffi::GrabFrozen
+                            => Err("keyboard could not be grabbed".to_string()),
+                        _ => unreachable!(),
+                    };
+                    res1.and(res2)
                 }
             },
         }
